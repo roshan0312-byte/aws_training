@@ -15,4 +15,10 @@ public class HelloController {
     public String about() {
         return "Welcome to my Spring Boot application deployed on AWS EC2 using GitHub Actions CI/CD!!!.";
     }
+
+
+    @GetMapping("/intro")
+    public String intro() {
+        return "My name is Roshan Shaw..";
+    }
 }
