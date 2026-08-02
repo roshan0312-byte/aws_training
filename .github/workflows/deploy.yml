@@ -32,16 +32,6 @@ jobs:
           target: "/home/ubuntu"
           overwrite: true
 
-      - name: Verify JAR on EC2
-        uses: appleboy/ssh-action@v1.2.2
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            echo "Checking JAR..."
-            ls -lh /home/ubuntu/aws-0.0.1-SNAPSHOT.jar
-
       - name: Restart Spring Boot Application
         uses: appleboy/ssh-action@v1.2.2
         with:
@@ -49,35 +39,36 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            echo "Stopping existing application..."
+            echo "Checking JAR"
 
-            PIDS=$(pgrep -f "aws-0.0.1-SNAPSHOT.jar" || true)
+            ls -lh /home/ubuntu/aws-0.0.1-SNAPSHOT.jar
 
-            if [ -n "$PIDS" ]; then
-              echo "Found PID(s): $PIDS"
+            echo "Stopping old application"
 
-              for PID in $PIDS
-              do
-                echo "Stopping PID: $PID"
-                kill -15 $PID || true
-              done
+            OLD_PID=$(pgrep -f aws-0.0.1-SNAPSHOT.jar || true)
 
-              sleep 10
-            else
-              echo "No running application found"
+            if [ ! -z "$OLD_PID" ]; then
+              echo "Old PID: $OLD_PID"
+
+              nohup bash -c "sleep 2; kill -9 $OLD_PID" >/dev/null 2>&1 &
+            
+              sleep 5
             fi
 
-            echo "Starting new application..."
+            echo "Starting new application"
 
-            nohup java -jar /home/ubuntu/aws-0.0.1-SNAPSHOT.jar \
-            > /home/ubuntu/app.log 2>&1 < /dev/null &
+            cd /home/ubuntu
+
+            nohup java -jar aws-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
 
             sleep 15
 
-            echo "Checking running process..."
+            echo "Checking process"
+
             pgrep -af java || true
 
-            echo "Application logs:"
-            tail -50 /home/ubuntu/app.log || true
+            echo "Logs"
+
+            tail -50 app.log || true
 
             echo "Deployment Successful"
