@@ -38,24 +38,41 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            APP_PID=$(pgrep -f "aws-0.0.1-SNAPSHOT.jar" || true)
+            cd /home/ubuntu
 
-            if [ -n "$APP_PID" ]; then
-              echo "Stopping existing application (PID: $APP_PID)"
-              kill -15 $APP_PID
+            echo "Files in /home/ubuntu:"
+            ls -lh
+
+            JAR=$(find . -maxdepth 2 -name "*.jar" | head -n 1)
+
+            if [ -z "$JAR" ]; then
+              echo "ERROR: No JAR file found!"
+              exit 1
+            fi
+
+            echo "Using JAR: $JAR"
+
+            PIDS=$(pgrep -f "$(basename "$JAR")" || true)
+
+            if [ -n "$PIDS" ]; then
+              echo "Stopping existing application..."
+              for PID in $PIDS; do
+                echo "Killing PID: $PID"
+                kill -15 "$PID" || true
+              done
               sleep 5
             fi
 
-            cd /home/ubuntu
-
-            JAR=$(ls *.jar | head -n 1)
-
-            echo "Starting $JAR"
+            echo "Starting application..."
 
             nohup java -jar "$JAR" > app.log 2>&1 < /dev/null &
 
             sleep 5
 
-            pgrep -f "$JAR"
+            echo "Running Java processes:"
+            pgrep -af java
+
+            echo "Application Logs:"
+            tail -20 app.log || true
 
             echo "Deployment Successful"
