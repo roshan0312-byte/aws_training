@@ -29,7 +29,8 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "target/aws-0.0.1-SNAPSHOT.jar"
-          target: "/home/ubuntu"
+          target: "/home/ubuntu/"
+          overwrite: true
 
       - name: Restart Spring Boot Application
         uses: appleboy/ssh-action@v1.2.2
@@ -40,39 +41,32 @@ jobs:
           script: |
             cd /home/ubuntu
 
-            echo "Files in /home/ubuntu:"
-            ls -lh
-
             JAR="/home/ubuntu/aws-0.0.1-SNAPSHOT.jar"
 
-            if [ -z "$JAR" ]; then
-              echo "ERROR: No JAR file found!"
+            echo "Checking JAR..."
+            ls -lh $JAR
+
+            if [ ! -f "$JAR" ]; then
+              echo "ERROR: JAR not found"
               exit 1
             fi
 
-            echo "Using JAR: $JAR"
+            echo "Stopping old application..."
 
-            PIDS=$(pgrep -f "$(basename "$JAR")" || true)
-
-            if [ -n "$PIDS" ]; then
-              echo "Stopping existing application..."
-              for PID in $PIDS; do
-                echo "Killing PID: $PID"
-                kill -15 "$PID" || true
-              done
-              sleep 5
-            fi
-
-            echo "Starting application..."
-
-            nohup java -jar "$JAR" > app.log 2>&1 < /dev/null &
+            pkill -f aws-0.0.1-SNAPSHOT.jar || true
 
             sleep 5
 
-            echo "Running Java processes:"
+            echo "Starting new application..."
+
+            nohup java -jar "$JAR" > app.log 2>&1 &
+
+            sleep 10
+
+            echo "Running application:"
             pgrep -af java
 
-            echo "Application Logs:"
-            tail -20 app.log || true
+            echo "Application logs:"
+            tail -30 app.log || true
 
             echo "Deployment Successful"
