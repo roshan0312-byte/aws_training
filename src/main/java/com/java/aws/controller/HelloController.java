@@ -13,6 +13,6 @@ public class HelloController {
 
     @GetMapping("/about")
     public String about() {
-        return "Welcome to my Spring Boot application deployed on AWS EC2 using GitHub Actions CI/CD.";
+        return "Welcome to my Spring Boot application deployed on AWS EC2 using GitHub Actions CI/CD!!!.";
     }
 }
